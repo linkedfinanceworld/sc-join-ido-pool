@@ -26,38 +26,31 @@ contract JoinIDOPool is
     // BUSD Token address
     address public busdToken;
 
-    // join start at which timestamp
+    // timestamp when IDO Pool starts
     uint256 public joinStartAt;
 
-    // join end at which timestamp
+    // timestamp when IDO Pool ends
     uint256 public joinEndAt;
-
-    // number of participant has been joined
-    uint256 public joinedCount;
 
     // Maximum allocation amount for pool
     uint256 public maxPoolAllocation;
 
-    // Is the pool initialize yet
-    bool public isInitilized; 
+    // Is the pool initialized yet
+    bool public isInitialized; 
 
     // Mapping isjoined for an address
     mapping(address => bool) public isJoined;
 
     // user address => pool name => number of slot.
-    mapping(address => uint256) public whitelistAddress;
+    mapping(address => bool) public whitelistAddress;
 
     // user max allocation
     mapping(address => uint256) public userMaxAllocation;
 
-    // how much BUSD user used
+    // how much BUSD that each user has transfered to pool
     mapping(address => uint256) public userJoinedAmount;
 
-    event EventJoined(
-        address indexed sender,
-        uint256 amount,
-        uint256 date
-    );
+    event Join(address indexed sender, uint256 amount, uint256 date);
 
     /**
      * @notice set new config for the SC
@@ -78,10 +71,10 @@ contract JoinIDOPool is
         external 
         onlyOwner 
     {
-        require(!isInitilized, "Pool is already initilized");
-        require(_busdToken != address(0), "Invalid address");
+        require(!isInitialized, "Pool is already initialized");
+        require(_busdToken != address(0), "Invalid BUSD address");
         require(
-            _joinStartAt > 0 && _joinEndAt > 0, 
+            _joinEndAt > _joinStartAt && _joinStartAt > 0, 
             "Invalid timestamp"
         );
         require(
@@ -90,7 +83,7 @@ contract JoinIDOPool is
         );
         require(_fundReceiver != address(0), "Invalid address");
 
-        isInitilized = true;
+        isInitialized = true;
         busdToken = _busdToken;
         joinStartAt = _joinStartAt;
         joinEndAt = _joinEndAt;
@@ -102,40 +95,33 @@ contract JoinIDOPool is
     /**
      * @notice whitelist address to pool and update number of slot if existed.
      * @dev only call by owner
-     * @param _addresses: list whitelist address
+     * @param _addresses: list of addresses that will be whitelisted
      */
-    function addWhitelistAddress(
-        address[] memory _addresses
-    ) 
-        external 
-        onlyOwner 
+    function addWhitelistAddress(address[] memory _addresses) external onlyOwner 
     {
-        require(isInitilized, "Pool is not initilize");
+        require(isInitialized, "Pool is not initialized");
         for (uint256 index = 0; index < _addresses.length; index++) {
-            whitelistAddress[_addresses[index]] = whitelistAddress[_addresses[index]] + 1;
+            whitelistAddress[_addresses[index]] = true;
         }
     }
 
     /**
-     * @notice remove whitelist address
+     * @notice remove whitelist addresses
      * @dev only call by owner
+     * @param _addresses: list of addresses that will be not whitelisted anymore
      */
-    function removeWhitelistAddress(
-        address[] memory _addresses
-    ) 
-        external 
-        onlyOwner 
+    function removeWhitelistAddress( address[] memory _addresses) external onlyOwner 
     {
         for (uint256 index = 0; index < _addresses.length; index++) {
-            whitelistAddress[_addresses[index]] = 0;
+            whitelistAddress[_addresses[index]] = false;
         }        
     }
 
     /**
      * @notice Add user max allocation for joining IDO
      * @dev only call by owner
-     * @param _addresses: list user addresses
-     * @param _maxAllocation: their corresponding allocation
+     * @param _addresses: list of user addresses
+     * @param _maxAllocation: their corresponding max allocation values
      */
     function addUserMaxAllocation(
         address[] memory _addresses,
@@ -144,19 +130,21 @@ contract JoinIDOPool is
         external 
         onlyOwner 
     {
-        require(isInitilized, "Pool is not initilize");
+        require(_addresses.length == _maxAllocation.length, 
+                "Length of addresses and allocation values are different");
+        require(isInitialized, "Pool is not initialized");
         for (uint256 index = 0; index < _addresses.length; index++) {
             userMaxAllocation[_addresses[index]] = _maxAllocation[index];
         }
     }
 
     /**
-     * @notice remove whitelist address
+     * @notice user joins IDO Pool
      * @dev call by external
-     * @param _amount: amount used to join IDO
+     * @param _amount: amount that user spends to join IDO
      */
     function join(uint256 _amount) external {
-        require(isInitilized, "Pool is not initilize");
+        require(isInitialized, "Pool is not initialized");
         require(_amount > 0, "Invalid amount");
         require(
             userJoinedAmount[_msgSender()] + _amount <= userMaxAllocation[_msgSender()],
@@ -164,7 +152,7 @@ contract JoinIDOPool is
         );
 
         require(
-            whitelistAddress[_msgSender()] > 0, 
+            whitelistAddress[_msgSender()] == true, 
             "You are not whitelisted"
         );
 
@@ -175,18 +163,19 @@ contract JoinIDOPool is
 
         require(
             block.timestamp >= joinStartAt,
-            "Join pool has not started yet"
+            "The IDO pool has not opened yet"
         );
 
         require(
             block.timestamp <= joinEndAt,
-            "Join pool has ended"
+            "The IDO pool has closed"
         );    
 
-        // Setting 
-        isJoined[_msgSender()] = true;
+        if ( !isJoined[_msgSender()] ) {
+            isJoined[_msgSender()] = true;
+        }
+        
         totalJoined += _amount;
-        joinedCount += 1;
 
         // Transfer token from user to fundReceiver
         IERC20(busdToken).transferFrom(_msgSender(), fundReceiver, _amount);
@@ -195,11 +184,7 @@ contract JoinIDOPool is
         userJoinedAmount[_msgSender()] = userJoinedAmount[_msgSender()] + _amount;
 
         // Joined event
-        emit EventJoined(
-            _msgSender(),
-            _amount,
-            block.timestamp
-        );
+        emit Join(_msgSender(), _amount, block.timestamp);
     }
 
     /**
@@ -216,7 +201,7 @@ contract JoinIDOPool is
      * @dev only call by owner
      */
     function changeJoinEnd(uint256 _joinEndAt) external onlyOwner {
-        require(_joinEndAt > 0, "Invalid timestamp");
+        require(_joinEndAt > joinStartAt, "Invalid timestamp, end time must be after start time");
         joinEndAt = _joinEndAt;
     }
 
@@ -243,17 +228,7 @@ contract JoinIDOPool is
      * @dev for FE
      */
     function canJoin(address _usr) public view returns (bool) {
-        bool var_;
-        if (whitelistAddress[_usr] > 0) {
-            if (userJoinedAmount[_usr] < userMaxAllocation[_usr]) {
-                var_ = true;
-            } else {
-                var_ = false;
-            }
-        } else {
-            var_ = false;
-        }
-        return var_;
+        return (whitelistAddress[_usr] && userJoinedAmount[_usr] < userMaxAllocation[_usr]);
     }
     /**
      * @notice Withdraw staked tokens without caring about rewards rewards
