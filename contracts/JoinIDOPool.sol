@@ -38,8 +38,8 @@ contract JoinIDOPool is
     // Maximum allocation amount for pool
     uint256 public maxPoolAllocation;
 
-    // Is the pool initialized yet
-    bool public isInitialized; 
+    // Is the pool initialize yet
+    bool public isInitilized; 
 
     // Mapping isjoined for an address
     mapping(address => bool) public isJoined;
@@ -78,7 +78,7 @@ contract JoinIDOPool is
         external 
         onlyOwner 
     {
-        require(!isInitialized, "Pool is already initilized");
+        require(!isInitilized, "Pool is already initilized");
         require(_busdToken != address(0), "Invalid address");
         require(
             _joinStartAt > 0 && _joinEndAt > 0, 
@@ -90,7 +90,7 @@ contract JoinIDOPool is
         );
         require(_fundReceiver != address(0), "Invalid address");
 
-        isInitialized = true;
+        isInitilized = true;
         busdToken = _busdToken;
         joinStartAt = _joinStartAt;
         joinEndAt = _joinEndAt;
@@ -110,7 +110,7 @@ contract JoinIDOPool is
         external 
         onlyOwner 
     {
-        require(isInitialized, "Pool is not initialize");
+        require(isInitilized, "Pool is not initilize");
         for (uint256 index = 0; index < _addresses.length; index++) {
             whitelistAddress[_addresses[index]] = whitelistAddress[_addresses[index]] + 1;
         }
@@ -144,7 +144,7 @@ contract JoinIDOPool is
         external 
         onlyOwner 
     {
-        require(isInitialized, "Pool is not initilize");
+        require(isInitilized, "Pool is not initilize");
         for (uint256 index = 0; index < _addresses.length; index++) {
             userMaxAllocation[_addresses[index]] = _maxAllocation[index];
         }
@@ -156,7 +156,7 @@ contract JoinIDOPool is
      * @param _amount: amount used to join IDO
      */
     function join(uint256 _amount) external {
-        require(isInitialized, "Pool is not initilize");
+        require(isInitilized, "Pool is not initilize");
         require(_amount > 0, "Invalid amount");
         require(
             userJoinedAmount[_msgSender()] + _amount <= userMaxAllocation[_msgSender()],
@@ -238,6 +238,23 @@ contract JoinIDOPool is
         maxPoolAllocation = _maxPoolAllocation;
     }
 
+    /**
+     * @notice check if user can join or not
+     * @dev for FE
+     */
+    function canJoin(address _usr) public view returns (bool) {
+        bool var_;
+        if (whitelistAddress[_usr] > 0) {
+            if (userJoinedAmount[_usr] < userMaxAllocation[_usr]) {
+                var_ = true;
+            } else {
+                var_ = false;
+            }
+        } else {
+            var_ = false;
+        }
+        return var_;
+    }
     /**
      * @notice Withdraw staked tokens without caring about rewards rewards
      * @dev Needs to be for emergency.
