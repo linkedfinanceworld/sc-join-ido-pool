@@ -36,13 +36,14 @@ describe("LFWIDOPoolToken", function () {
 
 
         console.log("initalize JoinIDOPool");
-        const startBlock = await ethers.provider.getBlockNumber();
-        const duration = 10*86400/3; // number of blocks in 10 days
-        const endBlock = startBlock + duration;
-        const maxPoolAllocation = 10000;
-        console.log("startBlock:", startBlock);
-        console.log("endBlock: ", endBlock);
-        idoPool.connect(owner).setConfig(tokenBUSD.address, startBlock, endBlock,  maxPoolAllocation, owner.address);
+        const blockNumber = await ethers.provider.getBlockNumber();
+        const startTime = (await ethers.provider.getBlock(blockNumber)).timestamp;
+        const duration = 7*86400; // 7 days
+        const endTime = startTime + duration;
+        const maxPoolAllocation = BigNumber.from(1000).mul(etherUnit);
+        console.log("startTime:", startTime);
+        console.log("endTime: ", endTime);
+        idoPool.connect(owner).setConfig(tokenBUSD.address, startTime, endTime,  maxPoolAllocation, owner.address);
 
         // tokenLFW approve user
         await tokenBUSD.connect(user1).approve(idoPool.address, BigNumber.from(100000).mul(etherUnit))
@@ -76,7 +77,7 @@ describe("LFWIDOPoolToken", function () {
     });
 
     describe("Testsuite 1", function () {
-        it ("TC1 - owner can add & remove whitelist", async function () {     
+        it ("TC1 - owner can add & remove whitelist", async function () {
             await idoPool.connect(owner).addWhitelistAddress([user1.address, user2.address]);
             await idoPool.connect(owner).removeWhitelistAddress([user2.address]);
             await idoPool.connect(owner).addWhitelistAddress([user2.address]);
@@ -98,29 +99,39 @@ describe("LFWIDOPoolToken", function () {
             await expect(idoPool.connect(owner).addUserMaxAllocation(addresses, [100]))
                 .to.be.revertedWith("Length of addresses and allocation values are different");
         });
-    
-        it ("TC4 - verify cases that users cannot join IDO Pool (exceed amount, not whitelisted))", async function () {
+
+        it ("TC4 - user joins IDO Pool - positive cases", async function () {
+            await idoPool.connect(user1).join(BigNumber.from(100).mul(etherUnit));
+            await idoPool.connect(user2).join(BigNumber.from(100).mul(etherUnit));
+        });
+
+        it ("TC5 - verify cases that users cannot join IDO Pool (exceed amount, not whitelisted))", async function () {
             // exceed total the amount of pool
             await expect(idoPool.connect(user1).join(BigNumber.from(300).mul(etherUnit)))
                 .to.be.revertedWith("Exceed the amount to join IDO");
 
-            // await idoPool.connect(owner).removeWhitelistAddress([user2.address]);
-            // await idoPool.connect(user2).join(100)
-            //     .to.be.revertedWith("You are not whitelisted");
-            // await idoPool.connect(owner).addWhitelistAddress([user2.address]);
-        }); 
+            await idoPool.connect(owner).removeWhitelistAddress([user2.address]);
+            await expect(idoPool.connect(user2).join(BigNumber.from(300).mul(etherUnit)))
+                .to.be.revertedWith("You are not whitelisted");
+            await idoPool.connect(owner).addWhitelistAddress([user2.address]);
 
-        it ("TC5 - user joins IDO Pool - positive cases", async function () {
-            await idoPool.connect(user1).join(BigNumber.from(100).mul(etherUnit));
+            await idoPool.connect(owner).changeMaxPoolAllocation(BigNumber.from(150).mul(etherUnit))
+            await expect(idoPool.connect(user2).join(BigNumber.from(100).mul(etherUnit)))
+                .to.be.revertedWith("Exceed max pool allocation for this IDO");
 
-        });        
+            // change it back to the previous value
+            await idoPool.connect(owner).changeMaxPoolAllocation(BigNumber.from(1000).mul(etherUnit))
 
-        
+        });
+
+
+
+
     });
 
     describe("Testsuite 2", function () {
         it ("tc1", async function () {
-            
+
         });
     });
 

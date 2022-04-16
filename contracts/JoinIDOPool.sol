@@ -3,17 +3,17 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol"; 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "hardhat/console.sol";
 
-contract JoinIDOPool is 
+contract JoinIDOPool is
         Context,
         Ownable,
-        ERC20("LFW Join IDO Pool", "LFW-IDO-Join") 
+        ERC20("LFW Join IDO Pool", "LFW-IDO-Join")
 {
 
     using SafeERC20 for IERC20;
@@ -38,7 +38,7 @@ contract JoinIDOPool is
     uint256 public maxPoolAllocation;
 
     // Is the pool initialized yet
-    bool public isInitialized; 
+    bool public isInitialized;
 
     // Mapping isjoined for an address
     mapping(address => bool) public isJoined;
@@ -69,14 +69,14 @@ contract JoinIDOPool is
         uint256 _joinEndAt,
         uint256 _maxPoolAllocation,
         address _fundReceiver
-    ) 
-        external 
-        onlyOwner 
+    )
+        external
+        onlyOwner
     {
         require(!isInitialized, "Pool is already initialized");
         require(_busdToken != address(0), "Invalid BUSD address");
         require(
-            _joinEndAt > _joinStartAt && _joinStartAt > 0, 
+            _joinEndAt > _joinStartAt && _joinStartAt > 0,
             "Invalid timestamp"
         );
         require(
@@ -99,7 +99,7 @@ contract JoinIDOPool is
      * @dev only call by owner
      * @param _addresses: list of addresses that will be whitelisted
      */
-    function addWhitelistAddress(address[] memory _addresses) external onlyOwner 
+    function addWhitelistAddress(address[] memory _addresses) external onlyOwner
     {
         require(isInitialized, "Pool is not initialized");
         for (uint256 index = 0; index < _addresses.length; index++) {
@@ -112,11 +112,11 @@ contract JoinIDOPool is
      * @dev only call by owner
      * @param _addresses: list of addresses that will be not whitelisted anymore
      */
-    function removeWhitelistAddress( address[] memory _addresses) external onlyOwner 
+    function removeWhitelistAddress( address[] memory _addresses) external onlyOwner
     {
         for (uint256 index = 0; index < _addresses.length; index++) {
             whitelistAddress[_addresses[index]] = false;
-        }        
+        }
     }
 
     /**
@@ -128,11 +128,11 @@ contract JoinIDOPool is
     function addUserMaxAllocation(
         address[] memory _addresses,
         uint256[] memory _maxAllocation
-    ) 
-        external 
-        onlyOwner 
+    )
+        external
+        onlyOwner
     {
-        require(_addresses.length == _maxAllocation.length, 
+        require(_addresses.length == _maxAllocation.length,
                 "Length of addresses and allocation values are different");
         require(isInitialized, "Pool is not initialized");
         for (uint256 index = 0; index < _addresses.length; index++) {
@@ -154,12 +154,12 @@ contract JoinIDOPool is
         );
 
         require(
-            whitelistAddress[_msgSender()] == true, 
+            whitelistAddress[_msgSender()] == true,
             "You are not whitelisted"
         );
 
         require(
-            totalJoined <= maxPoolAllocation,
+            totalJoined + _amount <= maxPoolAllocation,
             "Exceed max pool allocation for this IDO"
         );
 
@@ -171,12 +171,12 @@ contract JoinIDOPool is
         require(
             block.timestamp <= joinEndAt,
             "The IDO pool has closed"
-        );    
+        );
 
         if ( !isJoined[_msgSender()] ) {
             isJoined[_msgSender()] = true;
         }
-        
+
         totalJoined += _amount;
 
          // Amount BUSD has been joined by user
