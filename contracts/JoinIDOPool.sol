@@ -164,12 +164,12 @@ contract JoinIDOPool is
         );
 
         require(
-            block.number >= joinStartAt,
+            block.timestamp >= joinStartAt,
             "The IDO pool has not opened yet"
         );
 
         require(
-            block.number <= joinEndAt,
+            block.timestamp <= joinEndAt,
             "The IDO pool has closed"
         );    
 
@@ -183,7 +183,7 @@ contract JoinIDOPool is
         userJoinedAmount[_msgSender()] = userJoinedAmount[_msgSender()] + _amount;
 
         // Transfer token from user to fundReceiver
-        IERC20(busdToken).transferFrom(_msgSender(), fundReceiver, _amount);   
+        IERC20(busdToken).transferFrom(_msgSender(), fundReceiver, _amount);
 
         // Joined event
         emit Join(_msgSender(), _amount, block.timestamp);
