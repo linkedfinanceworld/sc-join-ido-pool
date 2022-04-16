@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "hardhat/console.sol";
+
 contract JoinIDOPool is 
         Context,
         Ownable,
@@ -162,12 +164,12 @@ contract JoinIDOPool is
         );
 
         require(
-            block.timestamp >= joinStartAt,
+            block.number >= joinStartAt,
             "The IDO pool has not opened yet"
         );
 
         require(
-            block.timestamp <= joinEndAt,
+            block.number <= joinEndAt,
             "The IDO pool has closed"
         );    
 
@@ -177,11 +179,11 @@ contract JoinIDOPool is
         
         totalJoined += _amount;
 
-        // Transfer token from user to fundReceiver
-        IERC20(busdToken).transferFrom(_msgSender(), fundReceiver, _amount);
-        
-        // Amount BUSD has been joined by user
+         // Amount BUSD has been joined by user
         userJoinedAmount[_msgSender()] = userJoinedAmount[_msgSender()] + _amount;
+
+        // Transfer token from user to fundReceiver
+        IERC20(busdToken).transferFrom(_msgSender(), fundReceiver, _amount);   
 
         // Joined event
         emit Join(_msgSender(), _amount, block.timestamp);

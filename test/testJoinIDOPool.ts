@@ -35,12 +35,27 @@ describe("LFWIDOPoolToken", function () {
         console.log("user2.address: ", user2.address);
 
 
-        console.log("initalize LFW Staking Pool");
+        console.log("initalize JoinIDOPool");
         const startBlock = await ethers.provider.getBlockNumber();
         const duration = 10*86400/3; // number of blocks in 10 days
-        const endBlock = await ethers.provider.getBlockNumber() + duration;
+        const endBlock = startBlock + duration;
         const maxPoolAllocation = 10000;
+        console.log("startBlock:", startBlock);
+        console.log("endBlock: ", endBlock);
         idoPool.connect(owner).setConfig(tokenBUSD.address, startBlock, endBlock,  maxPoolAllocation, owner.address);
+
+        // tokenLFW approve user
+        await tokenBUSD.connect(user1).approve(idoPool.address, BigNumber.from(100000).mul(etherUnit))
+        await tokenBUSD.connect(user2).approve(idoPool.address, BigNumber.from(100000).mul(etherUnit))
+
+        // have users own 2000 BUSD tokens
+        await tokenBUSD.transfer(user1.address, BigNumber.from(2000).mul(etherUnit));
+        await tokenBUSD.transfer(user2.address, BigNumber.from(2000).mul(etherUnit));
+        const userTokenBalance1 = await tokenBUSD.balanceOf(user1.address);
+        const userTokenBalance2 = await tokenBUSD.balanceOf(user2.address);
+        console.log("The amount of LFW that the user1 owns: ", formatEther(userTokenBalance1));
+        console.log("The amount of LFW that the user2 owns: ", formatEther(userTokenBalance2));
+
 
         return {owner, user1, user2, tokenBUSD, idoPool};
     }
@@ -76,7 +91,7 @@ describe("LFWIDOPoolToken", function () {
 
         it ("TC3 - verify owner sets max allocation", async function () {
             const addresses = [user1.address, user2.address];
-            const maxAllocationList = [200, 400];
+            const maxAllocationList = [BigNumber.from(200).mul(etherUnit), BigNumber.from(400).mul(etherUnit)];
             await idoPool.connect(owner).addUserMaxAllocation(addresses, maxAllocationList);
 
             //TODO revert if length of addresses & maxAllocationList are different
@@ -84,7 +99,21 @@ describe("LFWIDOPoolToken", function () {
                 .to.be.revertedWith("Length of addresses and allocation values are different");
         });
     
-        
+        it ("TC4 - verify cases that users cannot join IDO Pool (exceed amount, not whitelisted))", async function () {
+            // exceed total the amount of pool
+            await expect(idoPool.connect(user1).join(BigNumber.from(300).mul(etherUnit)))
+                .to.be.revertedWith("Exceed the amount to join IDO");
+
+            // await idoPool.connect(owner).removeWhitelistAddress([user2.address]);
+            // await idoPool.connect(user2).join(100)
+            //     .to.be.revertedWith("You are not whitelisted");
+            // await idoPool.connect(owner).addWhitelistAddress([user2.address]);
+        }); 
+
+        it ("TC5 - user joins IDO Pool - positive cases", async function () {
+            await idoPool.connect(user1).join(BigNumber.from(100).mul(etherUnit));
+
+        });        
 
         
     });
