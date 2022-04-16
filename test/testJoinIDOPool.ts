@@ -61,19 +61,31 @@ describe("LFWIDOPoolToken", function () {
     });
 
     describe("Testsuite 1", function () {
-        it ("TC1 owner can add whitelist", async function () {
-            const addresses = [user1.address, user2.address];
-            await idoPool.connect(owner).addWhitelistAddress(addresses);
+        it ("TC1 - owner can add & remove whitelist", async function () {     
+            await idoPool.connect(owner).addWhitelistAddress([user1.address, user2.address]);
+            await idoPool.connect(owner).removeWhitelistAddress([user2.address]);
+            await idoPool.connect(owner).addWhitelistAddress([user2.address]);
+         });
 
-            // const addresses = [user1.address, user2.address];
-            await idoPool.connect(owner).addWhitelistAddress(addresses);
+        it ("TC2 - normal user cannot modify whitelist", async function () {
+            await expect(idoPool.connect(user1).addWhitelistAddress([user1.address]))
+                .to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(idoPool.connect(user1).removeWhitelistAddress([user2.address]))
+                .to.be.revertedWith("Ownable: caller is not the owner");
         });
 
-        it ("TC1 owner can add whitelist", async function () {
-            // const addresses = [user1.address, user2.address];
-            // await idoPool.connect(owner).addWhitelistAddresses(addresses);
+        it ("TC3 - verify owner sets max allocation", async function () {
+            const addresses = [user1.address, user2.address];
+            const maxAllocationList = [200, 400];
+            await idoPool.connect(owner).addUserMaxAllocation(addresses, maxAllocationList);
+
+            //TODO revert if length of addresses & maxAllocationList are different
+            await expect(idoPool.connect(owner).addUserMaxAllocation(addresses, [100]))
+                .to.be.revertedWith("Length of addresses and allocation values are different");
         });
     
+        
+
         
     });
 

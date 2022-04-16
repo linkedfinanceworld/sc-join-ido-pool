@@ -14,12 +14,12 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const LFWIDOPoolToken = await ethers.getContractFactory("LFWIDOPoolToken");
-  const poolToken = await LFWIDOPoolToken.deploy();
+  const JoinIDOPool = await ethers.getContractFactory("JoinIDOPool");
+  const idoPool = await JoinIDOPool.deploy();
 
-  await poolToken.deployed();
+  await idoPool.deployed();
 
-  console.log("LFWIDOPoolToken deployed to:", poolToken.address);
+  console.log("JoinIDOPool deployed to:", idoPool.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
